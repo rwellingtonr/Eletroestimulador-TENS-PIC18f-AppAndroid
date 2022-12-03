@@ -35,7 +35,7 @@ short y=0, x0=0,x1=0, op=0, sel=0,b=0;
 /*========================================================================*/
 
 //ROTINA DELAY EM MICROSEGUNDO
-void VDelay_us(unsigned time_us){
+void VDelay_us(unsigned int time_us){
         unsigned n_cyc;
   n_cyc = Clock_MHz()>>2;
   n_cyc *= time_us>>4;
@@ -75,33 +75,36 @@ void signalGenerator()
     {
       y=1,x1=1; // define as variaveis para configuracao do BLUETOOTH ligado
       delay_ms(200);
-      return;
+      //return;
     }
-    if (stop==0 && sel==1)
+    if(stop == 0)
     {
-      y=1,x1=1; // define as variaveis para configuracao do BLUETOOTH ligado
-      delay_ms(30);
-      UART1_Write_Text("off");
-      delay_ms(200);
-      return;
-    }
-
-    if (stop==0 && sel==0) //caso cancele com stop e tenha vindo do manual - volta para o manual
-    {
-      y=0,x0=1; // define as variaveis para configuracao do aplicativo ligado
-      delay_ms(30);
-      UART1_Write_Text("off");
-      delay_ms(200);
-      return;
+      if (sel == 1)
+      {
+        // define as variaveis para configuracao do BLUETOOTH ligado
+        y=1,x1=1; 
+        delay_ms(30);
+        UART1_Write_Text("off");
+        delay_ms(200);
+       // return;
+      } else {
+        // define as variaveis para configuracao do aplicativo ligado
+        y=0,x0=1; 
+        delay_ms(30);
+        UART1_Write_Text("off");
+        delay_ms(200);
+        //return; 
+      }
     }
    }
 }
 /*========================================================================*/
 
 //EXIBIÇÃO DOS VALORES DO DISPLAY
-void Display()
+void displayValues()
 {
-  Lcd_Cmd(_LCD_CLEAR);               // Clear display
+  // Clear display
+  Lcd_Cmd(_LCD_CLEAR);               
 
   //converte em texto novamente para exibir no display
   FloatToStr_FixLen(periodofloat/1000, periodo, 5); //(converte 8330000us em 8.33 ms)
@@ -123,7 +126,6 @@ void calculatePeriod()
   periodofloat = periodofloat * 1000000;    //Converte para uS = 833000000 us
   pulsofloat = pulsoint-53;                 //salva o valor do pulso *int na variavel de pulso *float - ctd de correcao
   offfloat = (periodofloat) - (2*pulsoint); ///off = periodo - (2*pulso) = 8330000us - 2*250us = 7833333uS
-
 }
 /*========================================================================*/
 
@@ -146,7 +148,7 @@ void receiveData()
     //temp = atol (tempo);           //  Salva o *char tempo na variavel *int temp
 
     calculatePeriod();
-    Display();
+    displayValues();
     signalGenerator();
     return;
    }
@@ -162,37 +164,47 @@ void receiveData()
 //ESCOLHA DAS OPÇÕES UP/DOWN
 void handleEntryPoint()
 {
-    if(b==0) //QUANDO A OPÇÃO DO BOTAO NÃO ESTÁ ACIONADA ELE SO NAVEGA ENTRE DUAS OPÇÕES (BOTAO / BLUETOOTH)
+    if(b==0)
     {
-     if(down==0)
-      {
-        y++;
-        if(y>1)y=0;
-        while(down==0);
-      }
-     if(up==0)
-      {
-         y--;
-         if(y<0)y=1;
-         while(up==0);
-      }
+     //QUANDO A OPÇÃO DO BOTAO NÃO ESTÁ ACIONADA ELE SO NAVEGA ENTRE DUAS OPÇÕES (BOTAO / BLUETOOTH)
+     handleButtonOff();
     }
-    if(b==1) //QUANDO ELA ESTA ACIONADA ELE NAVEGA ENTRE 3 (BOTAO / FREQ / PULSO)
+    if(b==1) 
     {
-     if(down==0)
-      {
-        y++;
-        if(y>3)y=0;
-        if(y==1)y=2;
-        while(down==0);
-      }
-     if(up==0)
-      {
-         y--;
-         if(y<0)y=3;
-         if(y==1)y=0;
-         while(up==0);
-      }
+     //QUANDO ELA ESTA ACIONADA ELE NAVEGA ENTRE 3 (BOTAO / FREQ / PULSO)
+     handleButtonOn();
+    }
+}
+void handleButtonOn()
+{
+  if(down==0)
+   {
+     y++;
+     if(y>3)y=0;
+     if(y==1)y=2;
+     while(down==0);
+   }
+  if(up==0)
+   {
+      y--;
+      if(y<0)y=3;
+      if(y==1)y=0;
+      while(up==0);
+   }
+}
+void handleButtonOff()
+{
+   if(down==0)
+    {
+      y++;
+      if(y>1)y=0;
+      while(down==0);
+    }
+   if(up==0)
+    {
+       y--;
+       if(y<0)y=1;
+       while(up==0);
     }
 }
 /*========================================================================*/
@@ -204,7 +216,7 @@ void startUpButton()
    {
     while(start==0);
     calculatePeriod();                                  //Realiza os calculos de periodo e off
-    Display();                                   //exibe os dados no display
+    displayValues();                                   //exibe os dados no display
     FloatToStr_FixLen(pulsofloat+27, pulso, 3);  //Converte o pulso float em char para exibir no display
     freqfloat = freqint;                         // define freqfloat como freqint
     FloatToStr_FixLen(freqfloat, freq, 3);       //Converte o freq float em char para exibir no display
@@ -220,9 +232,7 @@ void setFrequency()
  {
   handleEntryPoint();
   startUpButton();
-  Lcd_Out(2,1," Botoes:   Ligado   ");
-  Lcd_Out(3,1,">Frequ:             ");Lcd_Out(3,8,freq);Lcd_Out(3,18,"Hz");
-  Lcd_Out(4,1," Pulso:             ");Lcd_Out(4,8,pulso);Lcd_Out(4,18,"us");
+  printButtonOn();
   
   while(1)
    {
@@ -263,9 +273,7 @@ void pulseGenerator()
  {
   handleEntryPoint();
   startUpButton();
-  Lcd_Out(2,1," Botoes:   Ligado   ");
-  Lcd_Out(3,1," Frequ:             ");Lcd_Out(3,8,freq);Lcd_Out(3,18,"Hz");
-  Lcd_Out(4,1,">Pulso:             ");Lcd_Out(4,8,pulso);Lcd_Out(4,18,"us");
+  printButtonOn();
   
   while(1)
    {
@@ -315,22 +323,39 @@ void bootstrap()
   if(x0==0)
    {
      b=0;
-      Lcd_Out(2,1,">Botoes:   Desligado");
-      Lcd_Out(3,1," Bluetooth:Desligado");
-      Lcd_Out(4,1,"                    ");
-   }
-  if(x0==1)
-   {
-    op = 0, sel=0, b=1;
-    IntToStr(freqint,freq); //int - char
-    IntToStr(pulsoint,pulso); //int -> char
-    Lcd_Out(2,1,">Botoes:   Ligado   ");
-    Lcd_Out(3,1," Frequ:             "); Lcd_Out(3,8,freq); Lcd_Out(3,18,"Hz");
-    Lcd_Out(4,1," Pulso:             "); Lcd_Out(4,8,pulso);Lcd_Out(4,18,"us");
-    startUpButton();
+     printButtonOff();
+     return;
+   } 
 
-   }
+  op = 0, sel=0, b=1;
+  IntToStr(freqint,freq); //int - char
+  IntToStr(pulsoint,pulso); //int -> char
+  printButtonOn();
+  startUpButton();
 }
+// Botões deslidados
+void printButtonOff()
+{
+  Lcd_Out(2,1,">Botoes:   Desligado");
+  Lcd_Out(3,1," Bluetooth:Desligado");
+  Lcd_Out(4,1,"                    ");
+
+}
+// Informa Botões Ligados
+void printButtonOn()
+{
+  Lcd_Out(2,1,">Botoes:   Ligado   ");
+  Lcd_Out(3,1," Frequ:             "); Lcd_Out(3,8,freq); Lcd_Out(3,18,"Hz");
+  Lcd_Out(4,1," Pulso:             "); Lcd_Out(4,8,pulso);Lcd_Out(4,18,"us");
+}
+// Informa a espera por dados
+void printWaitingData()
+{
+  Lcd_Out(2,1," Botoes:   Desligado");
+  Lcd_Out(3,1,">Bluetooth:Ligado   ");
+  Lcd_Out(4,1," Aguardando Dados...");
+}
+
 /*========================================================================*/
 
 //BLUETOOTH
@@ -349,42 +374,37 @@ void bluetooth()
 
   if(x1==0)
    {
-      Lcd_Out(2,1," Botoes:   Desligado");
-      Lcd_Out(3,1,">Bluetooth:Desligado");
-      Lcd_Out(4,1,"                    ");
+      printButtonOff();
+      return;
    }
 
-  if(x1==1)
-   {
-    sel=1;
-    Lcd_Out(2,1," Botoes:   Desligado");
-    Lcd_Out(3,1,">Bluetooth:Ligado   ");
-    Lcd_Out(4,1," Aguardando Dados...");
-
-    while (1)
-    {
-      if(enter==0)
-        {
-          x1++;
-          if(x1>1)x1=0;
-          while(enter==0);
-          break;
-        }
-      if (UART1_Data_Ready() == 1) // CASO RECEBA ALGUM DADO ELE VAI PARA ROTINA DE RECEBIMENTO
+  
+  sel=1;
+  printWaitingData();
+  
+  while (1)
+  {
+    if(enter==0)
       {
-        if(enter==0)
-         {
-          x1++;
-          if(x1>1)x1=0;
-          while(enter==0);
-          break;
-         }
-        receiveData();
-        cleanUpVariables();
+        x1++;
+        if(x1>1)x1=0;
+        while(enter==0);
         break;
       }
+    if (UART1_Data_Ready() == 1) // CASO RECEBA ALGUM DADO ELE VAI PARA ROTINA DE RECEBIMENTO
+    {
+      if(enter==0)
+       {
+        x1++;
+        if(x1>1)x1=0;
+        while(enter==0);
+        break;
+       }
+      receiveData();
+      cleanUpVariables();
+      break;
     }
-   }
+  }
 }
 
 /*========================================================================*/
